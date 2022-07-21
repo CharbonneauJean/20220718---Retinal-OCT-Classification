@@ -5,20 +5,32 @@ import tensorflow as tf
 from PIL import Image
 from flask import Flask, jsonify, request
 
-model = tf.keras.models.load_model('model/retinal-oct.h5')
+model = tf.keras.models.load_model('retinal-oct_finalJean_smaller.h5')
+model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
+from keras import utils
+
+labels = ['CNV', 'DME', 'DRUSEN', 'NORMAL']
 
 def prepare_image(img):
-    img = Image.open(io.BytesIO(img))
-    img = img.resize((150, 150))
-    img = np.array(img)
-    img = np.expand_dims(img, 0)
-    img = np.stack((img,)*3, axis=-1)
+    img = io.BytesIO(img)
+    #img = img.resize((150, 150))
+    #img = np.array(img)
+    #img = np.expand_dims(img, 0)
+    #img = np.stack((img,)*3, axis=-1)
     return img
 
 
 def predict_result(img):
-    Y_pred = model.predict(img)
-    return np.argmax(Y_pred, axis=1)
+    test_image = utils.load_img(img, target_size = (150, 150)) 
+    test_image = utils.img_to_array(test_image)
+    test_image = np.expand_dims(test_image, axis = 0)
+    y_pred = model.predict(test_image)
+    print(y_pred)
+
+    #predict the result
+    result = labels[np.argmax(y_pred)]
+    print(result)
+    return result
 
 
 app = Flask(__name__)
@@ -36,7 +48,7 @@ def infer_image():
     img_bytes = file.read()
     img = prepare_image(img_bytes)
 
-    return jsonify(prediction=int(predict_result(img)))
+    return jsonify(prediction=predict_result(img))
     
 
 @app.route('/', methods=['GET'])
